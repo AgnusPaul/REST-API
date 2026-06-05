@@ -59,10 +59,13 @@ pip install -r requirements.txt
 # 2. Run
 python app.py
 
-# 3. Open the live dashboard
+# 3. Open the live dashboard locally
 open demo.html        # macOS
 start demo.html       # Windows
 xdg-open demo.html    # Linux
+
+# 4. Or open the GitHub Pages dashboard if enabled:
+#    https://AgnusPaul.github.io/REST-API/
 
 # OR use cURL directly
 curl http://127.0.0.1:5000/api/users
@@ -76,10 +79,24 @@ curl http://127.0.0.1:5000/api/users
 nexus-api/
 │
 ├── 🐍  app.py              ← The entire API. One clean file.
-├── 🌐  demo.html           ← Live browser dashboard (no server needed)
+├── 🌐  demo.html           ← Local browser dashboard (no server needed)
+├── 📁  docs/index.html     ← GitHub Pages-compatible dashboard
 ├── 📦  requirements.txt    ← flask + flask-cors
 └── 📖  README.md           ← You're reading it
 ```
+
+---
+
+## 🚧 GitHub Pages Support
+
+This repository includes `docs/index.html` so the dashboard can be hosted as a GitHub Pages site.
+
+- Enable GitHub Pages in your repository settings.
+- Select the `docs/` folder as the source.
+- The project site should then be available at:
+  `https://AgnusPaul.github.io/REST-API/`
+
+> The dashboard is static and connects to the API at `http://127.0.0.1:5000`, so keep `python app.py` running locally before using the page.
 
 ---
 
@@ -258,7 +275,7 @@ def error(message, status=400, errors=None):
 
 ## 🌐 Live Dashboard Features
 
-Open `demo.html` in any browser while Flask is running.
+Open `demo.html` or `docs/index.html` in any browser while Flask is running.
 
 Live demo link: [Open the dashboard locally](demo.html)
 

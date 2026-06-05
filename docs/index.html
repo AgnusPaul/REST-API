@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NEXUS API — Live Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0c0c0f;
+  --bg2:#111116;
+  --bg3:#17171e;
+  --panel:#1a1a23;
+  --border:#2a2a38;
+  --border2:#363648;
+  --accent:#7c6dfa;
+  --accent2:#a599ff;
+  --green:#22d3a0;
+  --red:#f56565;
+  --amber:#f5a623;
+  --blue:#4fc3f7;
+  --text:#e8e8f0;
+  --text2:#9999b3;
+  --text3:#55556a;
+  --font-display:'Syne',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+  --r:6px;
+}
+
+body{background:var(--bg);color:var(--text);font-family:var(--font-display);min-height:100vh;overflow-x:hidden}
+
+/* grid bg */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:40px 40px;opacity:.18;pointer-events:none;z-index:0
+}
+
+.shell{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:1.5rem}
+
+/* ── HEADER ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:1.5rem;gap:1rem;flex-wrap:wrap}
+.logo{font-size:1.1rem;font-weight:800;letter-spacing:.12em;color:var(--accent2)}
+.logo span{color:var(--text2);font-weight:400;font-size:.75rem;display:block;letter-spacing:.06em;margin-top:1px}
+.status-pill{display:flex;align-items:center;gap:.4rem;font-family:var(--font-mono);font-size:.7rem;padding:.3rem .75rem;border-radius:20px;border:1px solid}
+.status-pill.offline{border-color:#3a2a2a;color:#f56565;background:#1e1010}
+.status-pill.online{border-color:#1a3a30;color:var(--green);background:#0a1e18}
+.status-pill.online::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.base-url{font-family:var(--font-mono);font-size:.7rem;color:var(--text3);border:1px solid var(--border);padding:.25rem .6rem;border-radius:4px}
+
+/* ── STAT STRIP ── */
+.stat-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;position:relative;overflow:hidden;transition:border-color .2s}
+.stat:hover{border-color:var(--border2)}
+.stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.stat:hover::after{transform:scaleX(1)}
+.stat-label{font-size:.65rem;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.4rem;font-family:var(--font-mono)}
+.stat-val{font-size:1.6rem;font-weight:800;color:var(--text);line-height:1}
+.stat-val.green{color:var(--green)}
+.stat-val.purple{color:var(--accent2)}
+.stat-val.amber{color:var(--amber)}
+
+/* ── TWO-COL LAYOUT ── */
+.layout{display:grid;grid-template-columns:1fr 380px;gap:1rem;margin-bottom:1rem}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+/* ── PANEL BASE ── */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid var(--border);background:var(--bg3)}
+.panel-title{font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);font-family:var(--font-mono)}
+.panel-body{padding:1rem}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border)}
+.tab{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;padding:.55rem 1rem;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;background:none;border-top:none;border-left:none;border-right:none}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--text2)}
+.tab-pane{display:none;padding:1rem}
+.tab-pane.active{display:block}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.form-grid.full{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-family:var(--font-mono);font-size:.65rem;letter-spacing:.08em;color:var(--text3);text-transform:uppercase}
+.field input,.field select{font-family:var(--font-mono);font-size:.75rem;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:.5rem .75rem;color:var(--text);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field select option{background:var(--bg2)}
+.id-field{grid-column:1/-1}
+
+.btn{font-family:var(--font-mono);font-size:.72rem;font-weight:500;letter-spacing:.08em;padding:.55rem 1rem;border-radius:4px;border:1px solid;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn-ghost{background:transparent;color:var(--text2);border-color:var(--border)}
+.btn-ghost:hover{background:var(--bg3);border-color:var(--border2);color:var(--text)}
+.btn-danger{background:transparent;color:var(--red);border-color:#3a2020}
+.btn-danger:hover{background:#1e1010;border-color:var(--red)}
+.btn-green{background:transparent;color:var(--green);border-color:#1a3530}
+.btn-green:hover{background:#0a1e18;border-color:var(--green)}
+.btn-row{display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap}
+
+/* ── RESPONSE PANEL ── */
+.resp-panel{background:var(--bg);border:1px solid var(--border);border-radius:4px;font-family:var(--font-mono);font-size:.7rem;line-height:1.7;padding:.75rem;max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;color:var(--text2);margin-top:.75rem}
+.resp-panel::-webkit-scrollbar{width:4px}
+.resp-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.resp-status{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--font-mono);font-size:.7rem;padding:.2rem .6rem;border-radius:3px;margin-bottom:.5rem}
+.s2xx{background:#0a2018;color:var(--green);border:1px solid #1a4030}
+.s4xx{background:#1e1010;color:var(--red);border:1px solid #3a2020}
+.s5xx{background:#1e1608;color:var(--amber);border:1px solid #3a2a10}
+
+/* ── USER TABLE ── */
+.user-table{width:100%;border-collapse:collapse;font-size:.72rem}
+.user-table th{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:.5rem .75rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.user-table td{padding:.55rem .75rem;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text2)}
+.user-table tr:last-child td{border-bottom:none}
+.user-table tbody tr{transition:background .1s;cursor:default}
+.user-table tbody tr:hover{background:var(--bg3)}
+.user-table .name-col{color:var(--text);font-weight:700}
+.badge{display:inline-block;font-family:var(--font-mono);font-size:.6rem;padding:2px 7px;border-radius:3px;border:1px solid;white-space:nowrap}
+.badge-admin{background:#1a1040;color:var(--accent2);border-color:#3a2a70}
+.badge-dev{background:#0a2018;color:var(--green);border-color:#1a4030}
+.badge-design{background:#1e1010;color:#f9a8d4;border-color:#3a1828}
+.badge-manager{background:#1a1808;color:var(--amber);border-color:#3a3010}
+.badge-analyst{background:#0a1828;color:var(--blue);border-color:#1a3040}
+.badge-intern{background:#1a1010;color:var(--text3);border-color:#2a2020}
+.active-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-on{background:var(--green)}
+.dot-off{background:var(--text3)}
+.tbl-actions{display:flex;gap:.3rem}
+.tbl-btn{font-family:var(--font-mono);font-size:.6rem;padding:2px 7px;border-radius:3px;border:1px solid;cursor:pointer;background:transparent;transition:all .12s}
+.tbl-btn.edit{color:var(--accent2);border-color:#2a2050}
+.tbl-btn.edit:hover{background:#1a1040}
+.tbl-btn.del{color:var(--red);border-color:#3a2020}
+.tbl-btn.del:hover{background:#1e1010}
+
+/* ── AUDIT LOG ── */
+.audit-list{display:flex;flex-direction:column;gap:.4rem;max-height:340px;overflow-y:auto}
+.audit-list::-webkit-scrollbar{width:4px}
+.audit-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.audit-item{display:flex;gap:.6rem;align-items:flex-start;font-family:var(--font-mono);font-size:.65rem;padding:.4rem .6rem;background:var(--bg2);border-radius:4px;border:1px solid var(--border)}
+.audit-time{color:var(--text3);white-space:nowrap;min-width:58px}
+.audit-action{padding:1px 5px;border-radius:2px;font-weight:700;white-space:nowrap}
+.a-LIST{background:#0a1828;color:var(--blue)}
+.a-GET{background:#0a1828;color:var(--blue)}
+.a-CREATE{background:#0a2018;color:var(--green)}
+.a-UPDATE{background:#1a1808;color:var(--amber)}
+.a-PATCH{background:#1a1808;color:var(--amber)}
+.a-DELETE{background:#1e1010;color:var(--red)}
+.audit-detail{color:var(--text2);flex:1}
+
+/* ── CURL CHEATSHEET ── */
+.curl-block{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:.6rem .8rem;margin-bottom:.5rem}
+.curl-method{font-family:var(--font-mono);font-size:.62rem;font-weight:700;display:inline-block;padding:1px 6px;border-radius:3px;margin-bottom:.35rem}
+.m-get{background:#0a1828;color:var(--blue)}
+.m-post{background:#0a2018;color:var(--green)}
+.m-put{background:#1a1808;color:var(--amber)}
+.m-patch{background:#1a1808;color:var(--amber)}
+.m-delete{background:#1e1010;color:var(--red)}
+.curl-code{font-family:var(--font-mono);font-size:.65rem;color:var(--text2);white-space:pre-wrap;word-break:break-all;line-height:1.6}
+.copy-btn{float:right;font-family:var(--font-mono);font-size:.6rem;padding:1px 6px;background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;cursor:pointer;transition:all .12s}
+.copy-btn:hover{border-color:var(--border2);color:var(--text)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;font-family:var(--font-mono);font-size:.72rem;padding:.6rem 1rem;border-radius:var(--r);border:1px solid;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:999;max-width:300px}
+.toast.ok{background:#0a2018;color:var(--green);border-color:#1a4030}
+.toast.err{background:#1e1010;color:var(--red);border-color:#3a2020}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── SEARCH ── */
+.search-bar{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.search-bar input,.search-bar select{font-family:var(--font-mono);font-size:.72rem;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:.4rem .7rem;color:var(--text);outline:none;flex:1;min-width:100px}
+.search-bar input:focus,.search-bar select:focus{border-color:var(--accent)}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:2rem;color:var(--text3);font-family:var(--font-mono);font-size:.72rem}
+
+/* ── JSON COLOR ── */
+.j-key{color:#a599ff}
+.j-str{color:#69f0ae}
+.j-num{color:#ffd54f}
+.j-bool{color:#f56565}
+.j-null{color:#9999b3}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<div class="shell">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">NEXUS API <span>USER MANAGEMENT REST API · v1.0</span></div>
+  <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <div class="base-url" id="baseUrlDisplay">http://127.0.0.1:5000</div>
+    <div class="status-pill offline" id="statusPill">● OFFLINE</div>
+    <button class="btn btn-ghost" onclick="checkHealth()" style="font-size:.65rem;padding:.3rem .7rem">↺ PING</button>
+  </div>
+</div>
+
+<!-- STAT STRIP -->
+<div class="stat-strip" id="statStrip">
+  <div class="stat"><div class="stat-label">Total Users</div><div class="stat-val purple" id="s-users">—</div></div>
+  <div class="stat"><div class="stat-label">Active</div><div class="stat-val green" id="s-active">—</div></div>
+  <div class="stat"><div class="stat-label">Total Requests</div><div class="stat-val" id="s-reqs">—</div></div>
+  <div class="stat"><div class="stat-label">Created</div><div class="stat-val green" id="s-created">—</div></div>
+  <div class="stat"><div class="stat-label">Deleted</div><div class="stat-val amber" id="s-deleted">—</div></div>
+  <div class="stat"><div class="stat-label">Audit Events</div><div class="stat-val" id="s-audit">—</div></div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT: users + operations -->
+  <div style="display:flex;flex-direction:column;gap:1rem">
+
+    <!-- USER TABLE -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Users</span>
+        <button class="btn btn-green" style="font-size:.65rem;padding:.3rem .75rem" onclick="loadUsers()">↺ Refresh</button>
+      </div>
+      <div style="padding:.75rem 1rem .25rem">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search name / email..." oninput="filterUsers()"/>
+          <select id="roleFilter" onchange="filterUsers()">
+            <option value="">All Roles</option>
+            <option>admin</option><option>developer</option><option>designer</option>
+            <option>manager</option><option>analyst</option><option>intern</option>
+          </select>
+          <select id="deptFilter" onchange="filterUsers()">
+            <option value="">All Departments</option>
+            <option>Engineering</option><option>Product</option><option>Operations</option>
+            <option>Marketing</option><option>Finance</option><option>HR</option>
+          </select>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="user-table">
+          <thead>
+            <tr><th>Name</th><th>Email</th><th>Role</th><th>Dept</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="userTableBody">
+            <tr><td colspan="6" class="empty">Start the Flask server then click Refresh</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- OPERATIONS -->
+    <div class="panel">
+      <div class="tabs" id="opTabs">
+        <button class="tab active" onclick="switchTab('create')">POST</button>
+        <button class="tab" onclick="switchTab('update')">PUT</button>
+        <button class="tab" onclick="switchTab('patch')">PATCH</button>
+        <button class="tab" onclick="switchTab('delete')">DELETE</button>
+        <button class="tab" onclick="switchTab('getone')">GET /:id</button>
+      </div>
+
+      <!-- CREATE -->
+      <div class="tab-pane active" id="pane-create">
+        <div class="form-grid">
+          <div class="field"><label>Name *</label><input id="c-name" placeholder="Arjun Sharma"/></div>
+          <div class="field"><label>Email *</label><input id="c-email" placeholder="arjun@nexus.io"/></div>
+          <div class="field"><label>Role</label>
+            <select id="c-role"><option>developer</option><option>admin</option><option>designer</option><option>manager</option><option>analyst</option><option>intern</option></select>
+          </div>
+          <div class="field"><label>Department</label>
+            <select id="c-dept"><option>Engineering</option><option>Product</option><option>Operations</option><option>Marketing</option><option>Finance</option><option>HR</option></select>
+          </div>
+          <div class="field"><label>Age</label><input id="c-age" type="number" placeholder="25"/></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="createUser()">▶ POST /api/users</button></div>
+        <div id="resp-create"></div>
+      </div>
+
+      <!-- UPDATE (PUT) -->
+      <div class="tab-pane" id="pane-update">
+        <div class="form-grid">
+          <div class="field id-field"><label>User ID *</label><input id="u-id" placeholder="paste user id here"/></div>
+          <div class="field"><label>Name *</label><input id="u-name" placeholder="New Name"/></div>
+          <div class="field"><label>Email *</label><input id="u-email" placeholder="new@email.com"/></div>
+          <div class="field"><label>Role</label>
+            <select id="u-role"><option>developer</option><option>admin</option><option>designer</option><option>manager</option><option>analyst</option><option>intern</option></select>
+          </div>
+          <div class="field"><label>Department</label>
+            <select id="u-dept"><option>Engineering</option><option>Product</option><option>Operations</option><option>Marketing</option><option>Finance</option><option>HR</option></select>
+          </div>
+          <div class="field"><label>Age</label><input id="u-age" type="number" placeholder="25"/></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="updateUser()">▶ PUT /api/users/:id</button></div>
+        <div id="resp-update"></div>
+      </div>
+
+      <!-- PATCH -->
+      <div class="tab-pane" id="pane-patch">
+        <p style="font-family:var(--font-mono);font-size:.68rem;color:var(--text3);margin-bottom:.75rem">Only filled fields will be updated. Leave blank to keep existing value.</p>
+        <div class="form-grid">
+          <div class="field id-field"><label>User ID *</label><input id="p-id" placeholder="paste user id here"/></div>
+          <div class="field"><label>Name</label><input id="p-name" placeholder="optional"/></div>
+          <div class="field"><label>Email</label><input id="p-email" placeholder="optional"/></div>
+          <div class="field"><label>Role</label>
+            <select id="p-role"><option value="">— keep current —</option><option>developer</option><option>admin</option><option>designer</option><option>manager</option><option>analyst</option><option>intern</option></select>
+          </div>
+          <div class="field"><label>Department</label>
+            <select id="p-dept"><option value="">— keep current —</option><option>Engineering</option><option>Product</option><option>Operations</option><option>Marketing</option><option>Finance</option><option>HR</option></select>
+          </div>
+          <div class="field"><label>Age</label><input id="p-age" type="number" placeholder="optional"/></div>
+          <div class="field"><label>Active</label>
+            <select id="p-active"><option value="">— keep current —</option><option value="true">true</option><option value="false">false</option></select>
+          </div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="patchUser()">▶ PATCH /api/users/:id</button></div>
+        <div id="resp-patch"></div>
+      </div>
+
+      <!-- DELETE -->
+      <div class="tab-pane" id="pane-delete">
+        <div class="form-grid full">
+          <div class="field"><label>User ID *</label><input id="d-id" placeholder="paste user id here"/></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-danger" onclick="deleteUser()">✕ DELETE /api/users/:id</button></div>
+        <div id="resp-delete"></div>
+      </div>
+
+      <!-- GET ONE -->
+      <div class="tab-pane" id="pane-getone">
+        <div class="form-grid full">
+          <div class="field"><label>User ID *</label><input id="g-id" placeholder="paste user id here"/></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-ghost" onclick="getOneUser()">▶ GET /api/users/:id</button></div>
+        <div id="resp-getone"></div>
+      </div>
+    </div>
+
+  </div><!-- end left col -->
+
+  <!-- RIGHT: audit + curl -->
+  <div style="display:flex;flex-direction:column;gap:1rem">
+
+    <!-- AUDIT LOG -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Audit Trail</span>
+        <button class="btn btn-ghost" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadAudit()">↺</button>
+      </div>
+      <div class="panel-body" style="padding:.75rem">
+        <div class="audit-list" id="auditList">
+          <div class="empty">No events yet</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- cURL CHEATSHEET -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">cURL Cheatsheet</span></div>
+      <div class="panel-body" style="padding:.75rem;display:flex;flex-direction:column;gap:.5rem">
+
+        <div class="curl-block">
+          <button class="copy-btn" onclick="copyText(this)">copy</button>
+          <div class="curl-method m-get">GET</div>
+          <div class="curl-code">curl http://127.0.0.1:5000/api/users</div>
+        </div>
+
+        <div class="curl-block">
+          <button class="copy-btn" onclick="copyText(this)">copy</button>
+          <div class="curl-method m-get">GET</div>
+          <div class="curl-code">curl "http://127.0.0.1:5000/api/users?role=admin&limit=5"</div>
+        </div>
+
+        <div class="curl-block">
+          <button class="copy-btn" onclick="copyText(this)">copy</button>
+          <div class="curl-method m-post">POST</div>
+          <div class="curl-code">curl -X POST http://127.0.0.1:5000/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Zara Khan","email":"zara@nexus.io","role":"designer"}'</div>
+        </div>
+
+        <div class="curl-block">
+          <button class="copy-btn" onclick="copyText(this)">copy</button>
+          <div class="curl-method m-patch">PATCH</div>
+          <div class="curl-code">curl -X PATCH http://127.0.0.1:5000/api/users/&lt;id&gt; \
+  -H "Content-Type: application/json" \
+  -d '{"role":"admin","active":false}'</div>
+        </div>
+
+        <div class="curl-block">
+          <button class="copy-btn" onclick="copyText(this)">copy</button>
+          <div class="curl-method m-delete">DELETE</div>
+          <div class="curl-code">curl -X DELETE http://127.0.0.1:5000/api/users/&lt;id&gt;</div>
+        </div>
+
+        <div class="curl-block">
+          <button class="copy-btn" onclick="copyText(this)">copy</button>
+          <div class="curl-method m-get">GET</div>
+          <div class="curl-code">curl http://127.0.0.1:5000/api/stats</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end right col -->
+</div><!-- end layout -->
+
+</div><!-- shell -->
+
+<script>
+const BASE = 'http://127.0.0.1:5000';
+let allUsers = [];
+let pingInterval = null;
+
+// ── TOAST ──
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── STATUS ──
+async function checkHealth() {
+  try {
+    const r = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(3000) });
+    const d = await r.json();
+    document.getElementById('statusPill').className = 'status-pill online';
+    document.getElementById('statusPill').textContent = '● ONLINE';
+    toast('API is healthy ✓');
+    loadUsers(); loadStats(); loadAudit();
+  } catch(e) {
+    document.getElementById('statusPill').className = 'status-pill offline';
+    document.getElementById('statusPill').textContent = '● OFFLINE';
+    toast('Cannot reach API — is Flask running?', 'err');
+  }
+}
+
+// ── STATS ──
+async function loadStats() {
+  try {
+    const r = await fetch(`${BASE}/api/stats`);
+    const d = await r.json();
+    if (!d.success) return;
+    const s = d.data;
+    document.getElementById('s-users').textContent   = s.current_user_count ?? '—';
+    document.getElementById('s-active').textContent  = s.active_users ?? '—';
+    document.getElementById('s-reqs').textContent    = s.total_requests ?? '—';
+    document.getElementById('s-created').textContent = s.total_users_created ?? '—';
+    document.getElementById('s-deleted').textContent = s.total_users_deleted ?? '—';
+    document.getElementById('s-audit').textContent   = s.audit_events ?? '—';
+  } catch(e) {}
+}
+
+// ── USERS ──
+async function loadUsers() {
+  try {
+    const r = await fetch(`${BASE}/api/users?limit=100`);
+    const d = await r.json();
+    if (!d.success) return;
+    allUsers = d.data;
+    renderTable(allUsers);
+    loadStats();
+    loadAudit();
+  } catch(e) {
+    document.getElementById('userTableBody').innerHTML =
+      '<tr><td colspan="6" class="empty">Could not reach API — start Flask first</td></tr>';
+  }
+}
+
+function roleBadge(role) {
+  const map = { admin:'badge-admin', developer:'badge-dev', designer:'badge-design',
+                manager:'badge-manager', analyst:'badge-analyst', intern:'badge-intern' };
+  return `<span class="badge ${map[role]||'badge-intern'}">${role}</span>`;
+}
+
+function renderTable(users) {
+  const tb = document.getElementById('userTableBody');
+  if (!users.length) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty">No users found</td></tr>'; return;
+  }
+  tb.innerHTML = users.map(u => `
+    <tr>
+      <td class="name-col">${esc(u.name)}</td>
+      <td>${esc(u.email)}</td>
+      <td>${roleBadge(u.role)}</td>
+      <td style="color:var(--text3);font-family:var(--font-mono);font-size:.65rem">${esc(u.department||'')}</td>
+      <td><span class="active-dot ${u.active?'dot-on':'dot-off'}"></span>${u.active?'active':'inactive'}</td>
+      <td>
+        <div class="tbl-actions">
+          <button class="tbl-btn edit" onclick="fillEdit('${u.id}')">edit</button>
+          <button class="tbl-btn del"  onclick="quickDelete('${u.id}','${esc(u.name)}')">del</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function filterUsers() {
+  const q    = document.getElementById('searchInput').value.toLowerCase();
+  const role = document.getElementById('roleFilter').value;
+  const dept = document.getElementById('deptFilter').value;
+  let filtered = allUsers;
+  if (q)    filtered = filtered.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  if (role) filtered = filtered.filter(u => u.role === role);
+  if (dept) filtered = filtered.filter(u => u.department === dept);
+  renderTable(filtered);
+}
+
+// ── FILL EDIT ──
+function fillEdit(id) {
+  const u = allUsers.find(x => x.id === id);
+  if (!u) return;
+  switchTab('update');
+  document.getElementById('u-id').value    = u.id;
+  document.getElementById('u-name').value  = u.name;
+  document.getElementById('u-email').value = u.email;
+  document.getElementById('u-role').value  = u.role;
+  document.getElementById('u-dept').value  = u.department || 'Engineering';
+  document.getElementById('u-age').value   = u.age || '';
+  toast(`Loaded user: ${u.name}`);
+}
+
+// ── TABS ──
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`pane-${name}`).classList.add('active');
+  const labels = { create:'POST', update:'PUT', patch:'PATCH', delete:'DELETE', getone:'GET /:id' };
+  document.querySelectorAll('.tab').forEach(t => { if (t.textContent===labels[name]) t.classList.add('active'); });
+}
+
+// ── API CALLS ──
+async function apiCall(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(BASE + path, opts);
+  const d = await r.json();
+  return { status: r.status, data: d };
+}
+
+function showResp(containerId, status, data) {
+  const cls = status < 300 ? 's2xx' : status < 500 ? 's4xx' : 's5xx';
+  const label = status < 300 ? '✓' : '✗';
+  document.getElementById(containerId).innerHTML =
+    `<div class="resp-status ${cls}">${label} ${status}</div>` +
+    `<div class="resp-panel">${colorJson(JSON.stringify(data, null, 2))}</div>`;
+}
+
+async function createUser() {
+  const body = { name: v('c-name'), email: v('c-email'), role: v('c-role'), department: v('c-dept') };
+  const age = v('c-age'); if (age) body.age = parseInt(age);
+  if (!body.name || !body.email) { toast('Name and email are required', 'err'); return; }
+  try {
+    const {status, data} = await apiCall('POST', '/api/users', body);
+    showResp('resp-create', status, data);
+    if (data.success) { toast(`Created: ${data.data.name}`); loadUsers(); }
+    else toast(data.message, 'err');
+  } catch(e) { toast('API unreachable', 'err'); }
+}
+
+async function updateUser() {
+  const id = v('u-id'); if (!id) { toast('User ID required', 'err'); return; }
+  const body = { name: v('u-name'), email: v('u-email'), role: v('u-role'), department: v('u-dept') };
+  const age = v('u-age'); if (age) body.age = parseInt(age);
+  try {
+    const {status, data} = await apiCall('PUT', `/api/users/${id}`, body);
+    showResp('resp-update', status, data);
+    if (data.success) { toast('User updated'); loadUsers(); }
+    else toast(data.message, 'err');
+  } catch(e) { toast('API unreachable', 'err'); }
+}
+
+async function patchUser() {
+  const id = v('p-id'); if (!id) { toast('User ID required', 'err'); return; }
+  const body = {};
+  const name = v('p-name'), email = v('p-email'), role = v('p-role'),
+        dept = v('p-dept'), age = v('p-age'), active = v('p-active');
+  if (name)   body.name = name;
+  if (email)  body.email = email;
+  if (role)   body.role = role;
+  if (dept)   body.department = dept;
+  if (age)    body.age = parseInt(age);
+  if (active) body.active = active === 'true';
+  if (!Object.keys(body).length) { toast('No fields to patch', 'err'); return; }
+  try {
+    const {status, data} = await apiCall('PATCH', `/api/users/${id}`, body);
+    showResp('resp-patch', status, data);
+    if (data.success) { toast('User patched'); loadUsers(); }
+    else toast(data.message, 'err');
+  } catch(e) { toast('API unreachable', 'err'); }
+}
+
+async function deleteUser() {
+  const id = v('d-id'); if (!id) { toast('User ID required', 'err'); return; }
+  try {
+    const {status, data} = await apiCall('DELETE', `/api/users/${id}`);
+    showResp('resp-delete', status, data);
+    if (data.success) { toast('User deleted'); loadUsers(); }
+    else toast(data.message, 'err');
+  } catch(e) { toast('API unreachable', 'err'); }
+}
+
+async function quickDelete(id, name) {
+  if (!confirm(`Delete "${name}"?`)) return;
+  try {
+    const {status, data} = await apiCall('DELETE', `/api/users/${id}`);
+    if (data.success) { toast(`Deleted: ${name}`); loadUsers(); }
+    else toast(data.message, 'err');
+  } catch(e) { toast('API unreachable', 'err'); }
+}
+
+async function getOneUser() {
+  const id = v('g-id'); if (!id) { toast('User ID required', 'err'); return; }
+  try {
+    const {status, data} = await apiCall('GET', `/api/users/${id}`);
+    showResp('resp-getone', status, data);
+  } catch(e) { toast('API unreachable', 'err'); }
+}
+
+// ── AUDIT ──
+async function loadAudit() {
+  try {
+    const r = await fetch(`${BASE}/api/audit?limit=30`);
+    const d = await r.json();
+    if (!d.success) return;
+    const list = document.getElementById('auditList');
+    if (!d.data.length) { list.innerHTML = '<div class="empty">No events yet</div>'; return; }
+    list.innerHTML = d.data.map(e => `
+      <div class="audit-item">
+        <span class="audit-time">${e.timestamp.slice(11,19)}</span>
+        <span class="audit-action a-${e.action}">${e.action}</span>
+        <span class="audit-detail">${esc(e.detail||e.resource)}</span>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+// ── COPY CURL ──
+function copyText(btn) {
+  const code = btn.closest('.curl-block').querySelector('.curl-code').textContent;
+  navigator.clipboard.writeText(code).then(() => { btn.textContent='✓ done'; setTimeout(()=>btn.textContent='copy',1500); });
+}
+
+// ── HELPERS ──
+function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function colorJson(json) {
+  return json
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*")\s*:/g, '<span class="j-key">$1</span>:')
+    .replace(/"([^"]*)"/g, '<span class="j-str">"$1"</span>')
+    .replace(/\b(\d+\.?\d*)\b/g, '<span class="j-num">$1</span>')
+    .replace(/\b(true|false)\b/g, '<span class="j-bool">$1</span>')
+    .replace(/\bnull\b/g, '<span class="j-null">null</span>');
+}
+
+// ── INIT ──
+checkHealth();
+setInterval(() => { checkHealth().catch(()=>{}); }, 30000);
+</script>
+</body>
+</html>
